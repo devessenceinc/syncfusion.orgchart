@@ -1,0 +1,240 @@
+@using Devessence.Module.OrgChart.Services
+@using Devessence.Module.OrgChart.Models
+@using Syncfusion.Blazor.Inputs
+@using Syncfusion.Blazor.Diagram
+
+@namespace Devessence.Module.OrgChart
+@inherits ModuleBase
+@inject IOrgChartService OrgChartService
+@inject ISettingService SettingService
+@inject NavigationManager NavigationManager
+
+@if (_items == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <ActionLink Action="Add" Security="SecurityAccessLevel.Edit" Text="Add Item" EditMode="True" Class="btn btn-primary mb-2" />
+
+    <div id="diagram-space" class="content-wrapper">
+        <SfDiagramComponent @ref="@_diagram" Width="100%" Height="@(_height.ToString() + "px")" NodeCreating="@OnNodeCreating" ConnectorCreating="@OnConnectorCreating" InteractionController="@DiagramInteractions.ZoomPan">
+            <ScrollSettings ScrollLimit="ScrollLimitMode.Diagram"></ScrollSettings>
+            <DataSourceSettings DataSource="_items" ID="Id" ParentID="ParentId"></DataSourceSettings>
+            <Layout Type="LayoutType.OrganizationalChart" HorizontalAlignment="@HorizontalAlignment.Auto" VerticalAlignment="@VerticalAlignment.Auto" @bind-Orientation="@_layoutOrientation" @bind-VerticalSpacing="@_verticalSpacing" @bind-HorizontalSpacing="@_horizontalSpacing" GetLayoutInfo="GetLayoutInfo">
+                <LayoutMargin Top="50" Bottom="50" Right="50" Left="50"></LayoutMargin>
+            </Layout>
+            <SnapSettings Constraints="SnapConstraints.None"></SnapSettings>
+            @if (!string.IsNullOrEmpty(SettingService.GetSetting(ModuleState.Settings, "Template", "")))
+            {
+                <DiagramTemplates>
+                    <NodeTemplate>
+                        @((MarkupString)DisplayItem(context as Node))
+                    </NodeTemplate>
+                </DiagramTemplates>
+            }
+        </SfDiagramComponent>
+    </div>
+}
+
+@code {
+    public override List<Resource> Resources => new List<Resource>()
+    {
+        new Resource { ResourceType = ResourceType.Stylesheet, Url = ModulePath() + "Module.css" }
+    };
+
+    public SfDiagramComponent _diagram;
+    private int _height;
+    private List<Item> _items;
+
+    public LayoutOrientation _layoutOrientation;
+    private Orientation _orientation;
+    private SubTreeAlignmentType _alignment;
+    private double _offset;
+
+    private int _itemWidth;
+    private int _itemHeight;
+    public int _verticalSpacing;
+    public int _horizontalSpacing;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrEmpty(SettingService.GetSetting(ModuleState.Settings, "Template", "")) && UserSecurity.IsAuthorized(PageState.User, PermissionNames.Edit, ModuleState.PermissionList))
+        {
+            AddModuleMessage("You Must Configure The <a href=\"" + EditUrl("Settings") + "\">Module Settings</a>", MessageType.Info);
+        }
+
+        var items = await OrgChartService.GetOrgChartItemsAsync(ModuleState.ModuleId);
+        _items = items.Select(i => new Item
+            {
+                Id = i.OrgChartItemId.ToString(),
+                Name = i.Name,
+                Description = i.Description,
+                ParentId = (i.ParentId == -1) ? "" : i.ParentId.ToString(),
+                ImageFileId = i.ImageFileId
+            }).ToList();
+
+        _height = int.Parse(SettingService.GetSetting(ModuleState.Settings, "Height", "500"));
+
+        switch (SettingService.GetSetting(ModuleState.Settings, "Orientation", "orientation1"))
+        {
+            case "orientation1":
+                _layoutOrientation = LayoutOrientation.TopToBottom;
+                break;
+            case "orientation2":
+                _layoutOrientation = LayoutOrientation.BottomToTop;
+                break;
+            case "orientation3":
+                _layoutOrientation = LayoutOrientation.LeftToRight;
+                break;
+            case "orientation4":
+                _layoutOrientation = LayoutOrientation.RightToLeft;
+                break;
+        }
+
+        switch (SettingService.GetSetting(ModuleState.Settings, "Alignment", "alignment4"))
+        {
+            case "alignment1":
+                _alignment = SubTreeAlignmentType.Alternate;
+                _orientation = Orientation.Vertical;
+                _offset = 20;
+                break;
+            case "alignment2":
+                _alignment = SubTreeAlignmentType.Left;
+                _orientation = Orientation.Vertical;
+                _offset = 20;
+                break;
+            case "alignment3":
+                _alignment = SubTreeAlignmentType.Left;
+                _orientation = Orientation.Vertical;
+                _offset = -50;
+                break;
+            case "alignment4":
+                _alignment = SubTreeAlignmentType.Right;
+                _orientation = Orientation.Vertical;
+                _offset = -50;
+                break;
+            case "alignment5":
+                _alignment = SubTreeAlignmentType.Right;
+                _orientation = Orientation.Vertical;
+                _offset = 20;
+                break;
+            case "alignment6":
+                _alignment = SubTreeAlignmentType.Balanced;
+                _orientation = Orientation.Horizontal;
+                _offset = 20;
+                break;
+            case "alignment7":
+                _alignment = SubTreeAlignmentType.Center;
+                _orientation = Orientation.Horizontal;
+                _offset = -50;
+                break;
+            case "alignment8":
+                _alignment = SubTreeAlignmentType.Left;
+                _orientation = Orientation.Horizontal;
+                _offset = 20;
+                break;
+            case "alignment9":
+                _alignment = SubTreeAlignmentType.Right;
+                _orientation = Orientation.Horizontal;
+                _offset = 20;
+                break;
+        }
+
+        _itemWidth = int.Parse(SettingService.GetSetting(ModuleState.Settings, "ItemWidth", "177"));
+        _itemHeight = int.Parse(SettingService.GetSetting(ModuleState.Settings, "ItemHeight", "54"));
+
+        _horizontalSpacing = int.Parse(SettingService.GetSetting(ModuleState.Settings, "HorizontalSpacing", "30"));
+        _verticalSpacing = int.Parse(SettingService.GetSetting(ModuleState.Settings, "VerticalSpacing", "30"));
+    }
+
+    private void OnNodeCreating(IDiagramObject obj)
+    {
+        Node node = obj as Node;
+
+        node.Width = _itemWidth;
+        node.Height = _itemHeight;
+
+        node.Shape = new Shape()
+        {
+            Type = Syncfusion.Blazor.Diagram.NodeShapes.HTML
+        };
+
+        if (bool.Parse(SettingService.GetSetting(ModuleState.Settings, "Expandable", "True")))
+        {
+            node.ExpandIcon = new DiagramExpandIcon()
+            {
+                Shape = DiagramExpandIcons.Minus,
+                Height = 10,
+                Width = 10,
+            };
+            node.CollapseIcon = new DiagramCollapseIcon()
+            {
+                Shape = DiagramCollapseIcons.Plus,
+                Height = 10,
+                Width = 10,
+            };
+        }
+    }
+
+    private void OnConnectorCreating(IDiagramObject connector1)
+    {
+        Connector connector = (connector1 as Connector);
+        connector.Type = ConnectorSegmentType.Orthogonal;
+        connector.CornerRadius = 10;
+        connector.Style = new ShapeStyle()
+        {
+            StrokeWidth = 1,
+            StrokeDashArray = "1,1"
+        };
+        connector.TargetDecorator.Shape = DecoratorShape.None;
+        connector.SourceDecorator.Shape = DecoratorShape.None;
+    }
+
+    private string DisplayItem(Node node)
+    {
+        var item = (node.Data as Item);
+
+        var template = SettingService.GetSetting(ModuleState.Settings, "Template", "");
+        if (UserSecurity.IsAuthorized(PageState.User, PermissionNames.Edit, ModuleState.PermissionList) && PageState.EditMode)
+        {
+            template = template.Replace("[NAME]", "<a href=\"" + EditUrl("Edit", "id=" + item.Id) + "\">" + item.Name + "</a>");
+        }
+        else
+        {
+            template = template.Replace("[NAME]", item.Name);
+        }
+        template = template.Replace("[DESCRIPTION]", item.Description);
+        if (item.ImageFileId != -1)
+        {
+            template = template.Replace("[IMAGE]", Utilities.FileUrl(PageState.Alias, item.ImageFileId));
+        }
+        else
+        {
+            template = template.Replace("[IMAGE]", ModulePath() + "invisible.png");
+        }
+
+        return template;
+    }
+
+    private TreeInfo GetLayoutInfo(IDiagramObject obj, TreeInfo options)
+    {
+        if (!options.HasSubTree)
+        {
+            options.AlignmentType = _alignment;
+            options.Orientation = _orientation;
+            options.Offset = _offset;
+        }
+        return options;
+    }
+
+    // required to map int properties to strings
+    public class Item
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string ParentId { get; set; }
+        public int ImageFileId { get; set; }
+    }
+}

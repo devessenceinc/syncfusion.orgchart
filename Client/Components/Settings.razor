@@ -1,0 +1,173 @@
+@namespace Devessence.Module.OrgChart
+@inherits ModuleBase
+@inject ISettingService SettingService
+
+<div class="container">
+    <div class="row mb-1 align-items-center">
+        <Label Class="col-sm-3" For="height" HelpText="Height of org chart">Height: </Label>
+        <div class="col-sm-9">
+            <input id="height" type="text" class="form-control" @bind="@_height" />
+        </div>
+    </div>
+    <div class="row mb-1 align-items-center">
+        <Label Class="col-sm-3" For="orientation" HelpText="Specify the chart orientation">Orientation: </Label>
+        <div class="col-sm-9">
+            <div class="row align-items-center">
+                <div class="col">
+                    <select id="orientation" class="form-select" value="@_orientation" @onchange="(e => OrientationChanged(e))" required>
+                        <option value="orientation1">Top To Bottom</option>
+                        <option value="orientation2">Bottom To Top</option>
+                        <option value="orientation3">Left To Right</option>
+                        <option value="orientation4">Right To Left</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <img src="@(ModulePath() + @_orientation).png" style="height: 100px;" />
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row mb-1 align-items-center">
+        <Label Class="col-sm-3" For="alignment" HelpText="Specify the alignment for each branch">Alignment: </Label>
+        <div class="col-sm-9">
+            <div class="row align-items-center">
+                <div class="col">
+                    <select id="alignment" class="form-select" value="@_alignment" @onchange="(e => AlignmentChanged(e))" required>
+                        <option value="alignment1">Alignment 1</option>
+                        <option value="alignment2">Alignment 2</option>
+                        <option value="alignment3">Alignment 3</option>
+                        <option value="alignment4">Alignment 4</option>
+                        <option value="alignment5">Alignment 5</option>
+                        <option value="alignment6">Alignment 6</option>
+                        <option value="alignment7">Alignment 7</option>
+                        <option value="alignment8">Alignment 8</option>
+                        <option value="alignment9">Alignment 9</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <img src="@(ModulePath() + @_alignment).png" style="height: 100px;" />
+                </div>
+            </div>
+        </div>
+    </div>
+    <hr />
+    <div class="row mb-1 align-items-center">
+        <Label Class="col-sm-3" For="itemwidth" HelpText="Width of org chart item">Item Width: </Label>
+        <div class="col-sm-9">
+            <input id="itemwidth" type="text" class="form-control" @bind="@_itemwidth" />
+        </div>
+    </div>
+    <div class="row mb-1 align-items-center">
+        <Label Class="col-sm-3" For="itemheight" HelpText="Height of org chart item">Item Height: </Label>
+        <div class="col-sm-9">
+            <input id="itemheight" type="text" class="form-control" @bind="@_itemheight" />
+        </div>
+    </div>
+    <div class="row mb-1 align-items-center">
+        <Label Class="col-sm-3" For="hspacing" HelpText="Horizonal spacing value">Horizontal Spacing: </Label>
+        <div class="col-sm-9">
+            <input id="hspacing" type="text" class="form-control" @bind="@_hspacing" />
+        </div>
+    </div>
+    <div class="row mb-1 align-items-center">
+        <Label Class="col-sm-3" For="vspacing" HelpText="Vertical spacing value">Vertical Spacing: </Label>
+        <div class="col-sm-9">
+            <input id="vspacing" type="text" class="form-control" @bind="@_vspacing" />
+        </div>
+    </div>
+    <div class="row mb-1 align-items-center">
+        <Label Class="col-sm-3" For="expandable" HelpText="Specify if nodes are expandable">Expandable: </Label>
+        <div class="col-sm-9">
+            <select id="expandable" class="form-select" @bind="@_expandable" required>
+                <option value="True">Yes</option>
+                <option value="False">No</option>
+            </select>
+        </div>
+    </div
+    <div class="row mb-1 align-items-center">
+        <Label Class="col-sm-3" For="template" HelpText="Provide an HTML item template. You can use tokens [NAME], [DESCRIPTION], and [IMAGE].">Template: </Label>
+        <div class="col-sm-9">
+            <textarea id="template" class="form-control" @bind="@_template" rows="5"></textarea>
+        </div>
+    </div>
+</div>
+
+@code {
+    public override string Title => "Org Chart Settings";
+
+    string _height;
+    string _orientation;
+    string _alignment;
+    string _itemwidth;
+    string _itemheight;
+    string _hspacing;
+    string _vspacing;
+    string _expandable;
+    string _template;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Dictionary<string, string> settings = await SettingService.GetModuleSettingsAsync(ModuleState.ModuleId);
+            _height = SettingService.GetSetting(settings, "Height", "500");
+            _orientation = SettingService.GetSetting(settings, "Orientation", "orientation1");
+            _alignment = SettingService.GetSetting(settings, "Alignment", "alignment4");
+            _itemwidth = SettingService.GetSetting(settings, "ItemWidth", "177");
+            _itemheight = SettingService.GetSetting(settings, "ItemHeight", "54");
+            _hspacing = SettingService.GetSetting(settings, "HorizontalSpacing", "30");
+            _vspacing = SettingService.GetSetting(settings, "VerticalSpacing", "30");
+            _expandable = SettingService.GetSetting(settings, "Expandable", "True");
+            _template = SettingService.GetSetting(settings, "Template", "");
+            if (string.IsNullOrEmpty(_template)) _template = DefaultTemplate();
+        }
+        catch (Exception ex)
+        {
+            AddModuleMessage(ex.Message, MessageType.Error);
+        }
+    }
+
+    private void OrientationChanged(ChangeEventArgs e)
+    {
+        _orientation = (string)e.Value;
+    }
+
+    private void AlignmentChanged(ChangeEventArgs e)
+    {
+        _alignment = (string)e.Value;
+    }
+
+    public async Task UpdateSettings()
+    {
+        try
+        {
+            Dictionary<string, string> settings = await SettingService.GetModuleSettingsAsync(ModuleState.ModuleId);
+            SettingService.SetSetting(settings, "Height", _height);
+            SettingService.SetSetting(settings, "Orientation", _orientation);
+            SettingService.SetSetting(settings, "Alignment", _alignment);
+            SettingService.SetSetting(settings, "ItemWidth", _itemwidth);
+            SettingService.SetSetting(settings, "ItemHeight", _itemheight);
+            SettingService.SetSetting(settings, "HorizontalSpacing", _hspacing);
+            SettingService.SetSetting(settings, "VerticalSpacing", _vspacing);
+            SettingService.SetSetting(settings, "Expandable", _expandable);
+            SettingService.SetSetting(settings, "Template", _template);
+            await SettingService.UpdateModuleSettingsAsync(settings, ModuleState.ModuleId);
+        }
+        catch (Exception ex)
+        {
+            AddModuleMessage(ex.Message, MessageType.Error);
+        }
+    }
+
+    private string DefaultTemplate()
+    {
+        return
+        "<div class=\"orgchart-template-div-style\">\n" +
+        "    <div id=\"image\" class=\"orgchart-template-image-style\" style=\"background-image: url([IMAGE]);\"></div>\n" +
+        "    <div style=\"height:75%;float: right;margin-right: 20px\">\n" +
+        "        <p class=\"orgchart-template-name-style\">[NAME]</p>\n" +
+        "        <p class=\"orgchart-template-description-style\">[DESCRIPTION]</p>\n" +
+        "    </div>\n" +
+        "</div>";
+    }
+}

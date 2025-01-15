@@ -1,0 +1,19 @@
+{"ModuleDefinitionName":"Devessence.Module.OrgChart, Devessence.Module.OrgChart.Client.Oqtane","Version":"1.0.0","Content":"
+Paula Wilson|CEO||image17.png\n
+Pedro Afonso|CTO|Paula Wilson|image5.png\n
+Maria Andres|VP of Engineering|Paula Wilson|image6.png\n
+Helen Bennett|CMO|Paula Wilson|image12.png\n
+Josephine Kaff|CFO|Paula Wilson|image16.png\n
+John Steel|Software Architect|Pedro Afonso|image1.png\n
+Jeannete Limeira|QA|Maria Andres|image7.png\n
+Yoshi Wilson|DevOps|Maria Andres|image2.png\n
+Thomas Hardy|Project Manager|Maria Andres|image3.png\n
+Peter Citeaux|Tech Lead|Maria Andres|image4.png\n
+Stephanie Brown|Software Engineer|Maria Andres|image8.png\n
+Helen Marie|IT Support|Maria Andres|image15.png\n
+Jaime Yorres|Director of Marketing|Helen Bennett|image9.png\n
+Martine Rancé|Graphic Designer|Helen Bennett|image10.png\n
+Maria Larsson|Social Media Manager|Helen Bennett|image11.png\n
+Alexa Feuer|VP of Sales|Josephine Kaff|image13.png\n
+Renata Jose|Account Manager|Josephine Kaff|image14.png\n
+"}

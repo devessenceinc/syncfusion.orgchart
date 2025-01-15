@@ -1,0 +1,166 @@
+@using Oqtane.Modules.Controls
+@using Devessence.Module.OrgChart.Services
+@using Devessence.Module.OrgChart.Models
+
+@namespace Devessence.Module.OrgChart
+@inherits ModuleBase
+@inject IOrgChartService OrgChartService
+@inject NavigationManager NavigationManager
+
+<form @ref="form" class="@(validated ? " was-validated" : "needs-validation" )" novalidate>
+    <div class="container">
+        <div class="row mb-1 align-items-center">
+            <Label Class="col-sm-3" For="name" HelpText="Enter a name">Name: </Label>
+            <div class="col-sm-9">
+                <input id="name" class="form-control" @bind="@_name" required />
+            </div>
+        </div>
+        <div class="row mb-1 align-items-center">
+            <Label Class="col-sm-3" For="description" HelpText="Enter a description">Description: </Label>
+            <div class="col-sm-9">
+                <input id="description" class="form-control" @bind="@_description" required />
+            </div>
+        </div>
+        <div class="row mb-1 align-items-center">
+            <Label Class="col-sm-3" For="parentid" HelpText="Specify the parent">Parent: </Label>
+            <div class="col-sm-9">
+                <select id="parentid" class="form-select" @bind="@_parentid" required>
+                    <option value="-1">&lt;No Parent&gt;</option>
+                    @foreach (var item in _items)
+                    {
+                        <option value="@item.OrgChartItemId">@item.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="row mb-1 align-items-center">
+            <Label Class="col-sm-3" For="image" HelpText="Specify an image">Image: </Label>
+            <div class="col-sm-9">
+                <FileManager FileId="@_imagefileid" Filter="@Constants.ImageFiles" @ref="_filemanager" />
+            </div>
+        </div>
+    </div>
+    <button type="button" class="btn btn-success" @onclick="Save">Save</button>
+    <NavLink class="btn btn-secondary" href="@NavigateUrl()">Cancel</NavLink>
+    @if (PageState.Action == "Edit")
+    {
+        <button type="button" class="btn btn-danger ms-1" @onclick="Delete">Delete</button>
+    }
+    <br /><br />
+    @if (PageState.Action == "Edit")
+    {
+        <AuditInfo CreatedBy="@_createdby" CreatedOn="@_createdon" ModifiedBy="@_modifiedby" ModifiedOn="@_modifiedon"></AuditInfo>
+    }
+</form>
+
+@code {
+    public override SecurityAccessLevel SecurityAccessLevel => SecurityAccessLevel.Edit;
+
+    public override string Actions => "Add,Edit";
+
+    public override string Title => "Manage Org Chart";
+
+    private List<OrgChartItem> _items = new List<OrgChartItem>();
+
+    private ElementReference form;
+    private bool validated = false;
+
+    private int _id;
+    private string _name;
+    private string _description;
+    private int _parentid = -1;
+    private int _imagefileid = -1;
+    private FileManager _filemanager;
+    private string _createdby;
+    private DateTime _createdon;
+    private string _modifiedby;
+    private DateTime _modifiedon;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _items = (await OrgChartService.GetOrgChartItemsAsync(ModuleState.ModuleId)).OrderBy(item => item.Name).ToList();
+
+            if (PageState.Action == "Edit")
+            {
+                _id = int.Parse(PageState.QueryString["id"]);
+                OrgChartItem OrgChartItem = await OrgChartService.GetOrgChartItemAsync(_id, ModuleState.ModuleId);
+                if (OrgChartItem != null)
+                {
+                    _name = OrgChartItem.Name;
+                    _description = OrgChartItem.Description;
+                    _parentid = OrgChartItem.ParentId;
+                    _imagefileid = OrgChartItem.ImageFileId;
+                    _createdby = OrgChartItem.CreatedBy;
+                    _createdon = OrgChartItem.CreatedOn;
+                    _modifiedby = OrgChartItem.ModifiedBy;
+                    _modifiedon = OrgChartItem.ModifiedOn;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await logger.LogError(ex, "Error Loading OrgChart {OrgChartItemId} {Error}", _id, ex.Message);
+            AddModuleMessage("Error Loading Org Chart", MessageType.Error);
+        }
+    }
+
+    private async Task Save()
+    {
+        try
+        {
+            validated = true;
+            var interop = new Oqtane.UI.Interop(JSRuntime);
+            if (await interop.FormValid(form))
+            {
+                if (PageState.Action == "Add")
+                {
+                    var OrgChartItem = new OrgChartItem();
+                    OrgChartItem.ModuleId = ModuleState.ModuleId;
+                    OrgChartItem.Name = _name;
+                    OrgChartItem.Description = _description;
+                    OrgChartItem.ParentId = _parentid;
+                    OrgChartItem.ImageFileId = _filemanager.GetFileId();
+                    OrgChartItem = await OrgChartService.AddOrgChartItemAsync(OrgChartItem);
+                    await logger.LogInformation("OrgChartItem Added {OrgChartItem}", OrgChartItem);
+                }
+                else
+                {
+                    var OrgChartItem = await OrgChartService.GetOrgChartItemAsync(_id, ModuleState.ModuleId);
+                    OrgChartItem.Name = _name;
+                    OrgChartItem.Description = _description;
+                    OrgChartItem.ParentId = _parentid;
+                    OrgChartItem.ImageFileId = _filemanager.GetFileId();
+                    await OrgChartService.UpdateOrgChartItemAsync(OrgChartItem);
+                    await logger.LogInformation("OrgChartItem Updated {OrgChartItem}", OrgChartItem);
+                }
+                NavigationManager.NavigateTo(NavigateUrl());
+            }
+            else
+            {
+                AddModuleMessage("You Must Enter All Required Information", MessageType.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            await logger.LogError(ex, "Error Saving OrgChart Item {Error}", ex.Message);
+            AddModuleMessage("Error Saving Org Chart Item", MessageType.Error);
+        }
+    }
+
+    private async Task Delete()
+    {
+        try
+        {
+            await OrgChartService.DeleteOrgChartItemAsync(_id, ModuleState.ModuleId);
+            await logger.LogInformation("OrgChartItem Deleted {OrgChartItemId}", _id);
+            NavigationManager.NavigateTo(NavigateUrl());
+        }
+        catch (Exception ex)
+        {
+            await logger.LogError(ex, "Error Deleting OrgChart Item {Error}", ex.Message);
+            AddModuleMessage("Error Deleting Org Chart Item", MessageType.Error);
+        }
+    }
+}
